@@ -6,8 +6,7 @@ pipeline {
         // Replace with your GCP Project ID
         GCP_PROJECT_ID = 'cts08-avadhootb-projs'
         // Replace with your desired Docker image repository (e.g., us-central1-docker.pkg.dev/your-gcp-project-id/my-flask-images)
-        # For GCR: GCR_IMAGE_REPO = "gcr.io/${GCP_PROJECT_ID}"
-        # For Artifact Registry:
+       
         GCR_IMAGE_REPO = "us-central1-docker.pkg.dev/${GCP_PROJECT_ID}/my-flask-images"
 
         IMAGE_NAME = "simple-login-app"
