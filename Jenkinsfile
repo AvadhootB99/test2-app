@@ -21,7 +21,7 @@ pipeline {
     stages {
         stage('Checkout Code') {
             steps {
-                git branch: 'main', url: 'https://github.com/AvadhootB99/test2-app.git'
+                git branch: 'main', credentialsId: '0442d698-3345-48d7-89ad-fc48b5cbc43b',  url: 'https://github.com/AvadhootB99/test2-app.git'
             }
         }
 
