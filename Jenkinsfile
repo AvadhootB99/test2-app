@@ -30,7 +30,7 @@ pipeline {
                 script {
                     // Authenticate Docker to GCR/Artifact Registry using the service account
                     // Assuming you have 'gcp-service-account' credential ID set up
-                    withCredentials([googleServiceAccountKey('gcp-service-account')]) {
+                    withCredentials([googleServiceAccountKey('gke-serviceaccount-jenkins')]) {
                         sh "gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}"
                         sh "gcloud auth configure-docker ${GCR_IMAGE_REPO.split('/')[0]}" // Authenticate the correct registry hostname
                     }
@@ -51,14 +51,14 @@ pipeline {
             steps {
                 script {
                     // Authenticate kubectl to the GKE cluster using the service account
-                    withCredentials([googleServiceAccountKey('gcp-service-account')]) {
+                    withCredentials([googleServiceAccountKey('gke-serviceaccount-jenkins')]) {
                         sh "gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}"
                         sh "gcloud config set project ${GCP_PROJECT_ID}"
                         sh "gcloud container clusters get-credentials ${GKE_CLUSTER_NAME} --zone ${GKE_CLUSTER_ZONE} --project ${GCP_PROJECT_ID}"
                     }
 
                     // Replace the image tag in the deployment file
-                    sh "sed -i 's|your-gcr-or-artifact-registry-path/simple-login-app:latest|${FULL_IMAGE_NAME}|g' ${KUBE_DEPLOYMENT_FILE}"
+                    sh "sed -i 's|us-central1-docker.pkg.dev/cts08-avadhootb-projs/my-flask-images/simple-login-app:latest|${FULL_IMAGE_NAME}|g' ${KUBE_DEPLOYMENT_FILE}"
 
                     // Apply Kubernetes manifests
                     sh "kubectl apply -f ${KUBE_DEPLOYMENT_FILE}"
