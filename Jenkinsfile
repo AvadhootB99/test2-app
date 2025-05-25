@@ -30,8 +30,8 @@ pipeline {
                 script {
                     // Authenticate Docker to GCR/Artifact Registry using the service account
                     // Assuming you have 'gcp-service-account' credential ID set up
-                    withCredentials([file(credentialsId: 'new-service-id', variable: 'MY_KEY')]) {
-                        sh "gcloud auth activate-service-account --key-file=${MY_KEY}"
+                    withCredentials([googleServiceAccountKey(env.GCP_SERVICE_ACCOUNT_CREDENTIAL_ID)]) {
+                        sh "gcloud auth activate-service-account --key-file=${env.GOOGLE_APPLICATION_CREDENTIALS}"
                         sh "gcloud auth configure-docker ${GCR_IMAGE_REPO.split('/')[0]}" // Authenticate the correct registry hostname
                     }
                     sh "docker build -t ${FULL_IMAGE_NAME} ."
@@ -51,8 +51,8 @@ pipeline {
             steps {
                 script {
                     // Authenticate kubectl to the GKE cluster using the service account
-                    withCredentials([file(credentialsId: 'new-service-id', variable: 'MY_KEY')]) {
-                        sh "gcloud auth activate-service-account --key-file=${MY_KEY}"
+                    withCredentials([googleServiceAccountKey(env.GCP_SERVICE_ACCOUNT_CREDENTIAL_ID)]) {
+                        sh "gcloud auth activate-service-account --key-file=${env.GOOGLE_APPLICATION_CREDENTIALS}"
                         sh "gcloud config set project ${GCP_PROJECT_ID}"
                         sh "gcloud container clusters get-credentials ${GKE_CLUSTER_NAME} --zone ${GKE_CLUSTER_ZONE} --project ${GCP_PROJECT_ID}"
                     }
