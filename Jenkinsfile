@@ -8,7 +8,7 @@ pipeline {
         // Replace with your desired Docker image repository (e.g., us-central1-docker.pkg.dev/your-gcp-project-id/my-flask-images)
        
         GCR_IMAGE_REPO = "us-central1-docker.pkg.dev/${GCP_PROJECT_ID}/my-flask-images"
-     	GCP_SERVICE_ACCOUNT_CREDENTIAL_ID = "my-jenkins-sa"
+     	GCP_SERVICE_ACCOUNT_CREDENTIAL_ID = credentials('my-jenkins-sa')
 
         IMAGE_NAME = "simple-login-app"
         IMAGE_TAG = "${env.BUILD_NUMBER}" // Use Jenkins build number for unique tags
@@ -31,10 +31,9 @@ pipeline {
                 script {
                     // Authenticate Docker to GCR/Artifact Registry using the service account
                     // Assuming you have 'gcp-service-account' credential ID set up
-                    withCredentials([googleServiceAccountKey(env.GCP_SERVICE_ACCOUNT_CREDENTIAL_ID)]) {
-                        sh "gcloud auth activate-service-account --key-file=${env.GOOGLE_APPLICATION_CREDENTIALS}"
-                        sh "gcloud auth configure-docker ${GCR_IMAGE_REPO.split('/')[0]}" // Authenticate the correct registry hostname
-                    }
+                    sh ('gcloud auth activate-service-account --key-file=$GCP_SERVICE_ACCOUNT_CREDENTIAL_ID')
+                    sh "gcloud auth configure-docker ${GCR_IMAGE_REPO.split('/')[0]}" // Authenticate the correct registry hostname
+                    
                     sh "docker build -t ${FULL_IMAGE_NAME} ."
                 }
             }
@@ -52,11 +51,10 @@ pipeline {
             steps {
                 script {
                     // Authenticate kubectl to the GKE cluster using the service account
-                    withCredentials([googleServiceAccountKey(env.GCP_SERVICE_ACCOUNT_CREDENTIAL_ID)]) {
-                        sh "gcloud auth activate-service-account --key-file=${env.GOOGLE_APPLICATION_CREDENTIALS}"
-                        sh "gcloud config set project ${GCP_PROJECT_ID}"
-                        sh "gcloud container clusters get-credentials ${GKE_CLUSTER_NAME} --zone ${GKE_CLUSTER_ZONE} --project ${GCP_PROJECT_ID}"
-                    }
+                    sh ('gcloud auth activate-service-account --key-file=$GCP_SERVICE_ACCOUNT_CREDENTIAL_ID')
+                    sh "gcloud config set project ${GCP_PROJECT_ID}"
+                    sh "gcloud container clusters get-credentials ${GKE_CLUSTER_NAME} --zone ${GKE_CLUSTER_ZONE} --project ${GCP_PROJECT_ID}"
+                    
 
                     // Replace the image tag in the deployment file
                     sh "sed -i 's|us-central1-docker.pkg.dev/cts08-avadhootb-projs/my-flask-images/simple-login-app:latest|${FULL_IMAGE_NAME}|g' ${KUBE_DEPLOYMENT_FILE}"
