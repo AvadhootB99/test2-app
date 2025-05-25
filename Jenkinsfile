@@ -8,6 +8,7 @@ pipeline {
         // Replace with your desired Docker image repository (e.g., us-central1-docker.pkg.dev/your-gcp-project-id/my-flask-images)
        
         GCR_IMAGE_REPO = "us-central1-docker.pkg.dev/${GCP_PROJECT_ID}/my-flask-images"
+     	GCP_SERVICE_ACCOUNT_CREDENTIAL_ID = "my-jenkins-sa"
 
         IMAGE_NAME = "simple-login-app"
         IMAGE_TAG = "${env.BUILD_NUMBER}" // Use Jenkins build number for unique tags
