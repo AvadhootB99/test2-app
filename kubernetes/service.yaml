@@ -1,0 +1,14 @@
+# kubernetes/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: flask-login-service
+spec:
+  selector:
+    app: flask-login
+  ports:
+    - protocol: TCP
+      port: 80 # External port
+      targetPort: 5000 # Internal container port
+  type: LoadBalancer # Exposes your application to the internet
+

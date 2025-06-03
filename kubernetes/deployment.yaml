@@ -1,0 +1,33 @@
+# kubernetes/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flask-login-app
+  labels:
+    app: flask-login
+spec:
+  replicas: 2 # You can adjust the number of replicas
+  selector:
+    matchLabels:
+      app: flask-login
+  template:
+    metadata:
+      labels:
+        app: flask-login
+    spec:
+      containers:
+      - name: flask-login-container
+        image: your-gcr-or-artifact-registry-path/simple-login-app:latest # IMPORTANT: Will be replaced by Jenkins
+        ports:
+        - containerPort: 5000
+        env:
+        - name: FLASK_APP
+          value: app.py
+        # Add environment variables for SECRET_KEY if not handled by K8s Secrets
+        # - name: APP_SECRET_KEY
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: app-secrets
+        #       key: secret-key
+      # Optionally, specify a service account for the pod if it needs specific GCP permissions
+      # serviceAccountName: flask-app-sa # If you create one for the application itself
