@@ -81,7 +81,7 @@ pipeline {
                     }
 
                     // Dynamic Image Tag Replacement
-                    sh "sed -i.bak 's|BUILD_TAG_PLACEHOLDER|${IMAGE_TAG}|g' ${KUBE_DEPLOYMENT_FILE}"
+                    sh "sed -i.bak 's|${ARTIFACT_REGISTRY_REPO_URL}/${IMAGE_NAME}:9|${FULL_IMAGE_NAME}|g' ${KUBE_DEPLOYMENT_FILE}"
                     
                     // Apply Kubernetes manifests
                     sh "kubectl apply -f ${KUBE_DEPLOYMENT_FILE}"
