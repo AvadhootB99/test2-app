@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: flask-login-container
-        image: your-gcr-or-artifact-registry-path/simple-login-app:latest # IMPORTANT: Will be replaced by Jenkins
+        image: us-central1-docker.pkg.dev/cts08-avadhootb-projs/my-flask-images/simple-login-app:9 # IMPORTANT: Will be replaced by Jenkins
         ports:
         - containerPort: 5000
         env:
