@@ -1,54 +1,60 @@
 // Jenkinsfile
 pipeline {
-    agent any
+    agent any // Consider 'agent { docker { image 'your-custom-build-image' } }' for isolated builds with pre-installed tools
 
     environment {
-        // Replace with your GCP Project ID
-        GCP_PROJECT_ID = 'cts08-avadhootb-projs' // CORRECTED: Use your actual Project ID
-        // Replace with your desired Artifact Registry repository (e.g., us-central1-docker.pkg.dev/your-gcp-project-id/my-flask-images)
-        GCR_IMAGE_REPO = "us-central1-docker.pkg.dev/${GCP_PROJECT_ID}/my-flask-images" // Using Artifact Registry
-        // For Google Container Registry (GCR), it would be:
-        // GCR_IMAGE_REPO = "gcr.io/${GCP_PROJECT_ID}"
+        // --- GCP Configuration ---
+        // Replace with your actual GCP Project ID
+        GCP_PROJECT_ID = 'project_id' // <--- **IMPORTANT: REPLACE WITH YOUR ACTUAL PROJECT ID**
+        
+        // Artifact Registry Repository URL. This should point to your Docker repository.
+        // Format: <LOCATION>-docker.pkg.dev/<PROJECT_ID>/<REPOSITORY_NAME>
+        // Make sure 'my-flask-images' is the actual name of your Artifact Registry Docker repository
+        ARTIFACT_REGISTRY_REPO_URL = "us-central1-docker.pkg.dev/${GCP_PROJECT_ID}/my-flask-images"
 
+        // GKE Cluster details
+        GKE_CLUSTER_NAME = "my-flask-cluster" // Your GKE cluster name
+        GKE_CLUSTER_ZONE = "us-central1-a"   // Zone where your GKE cluster is located (for zonal clusters)
+        // GKE_CLUSTER_REGION = "us-central1" // Use this for regional clusters instead of GKE_CLUSTER_ZONE
+
+        // --- Application & Image Configuration ---
         IMAGE_NAME = "simple-login-app"
         IMAGE_TAG = "${env.BUILD_NUMBER}" // Use Jenkins build number for unique tags
-        FULL_IMAGE_NAME = "${GCR_IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_TAG}"
+        FULL_IMAGE_NAME = "${ARTIFACT_REGISTRY_REPO_URL}/${IMAGE_NAME}:${IMAGE_TAG}"
+
+        // Kubernetes Manifests paths (relative to your repository root)
         KUBE_DEPLOYMENT_FILE = "kubernetes/deployment.yaml"
         KUBE_SERVICE_FILE = "kubernetes/service.yaml"
-        GKE_CLUSTER_NAME = "my-flask-cluster" // Your GKE cluster name
-        GKE_CLUSTER_ZONE = "us-central1-a" // Zone where your GKE cluster is located
-        GKE_CLUSTER_REGION = "us-central1" // Region for regional clusters, or often inferrable from zone
+        
+        // --- Jenkins Credential IDs ---
+        // Credential ID for your GitHub repository (e.g., Personal Access Token or SSH key)
+        GITHUB_CREDENTIALS_ID = '0442d698-3345-48d7-89ad-fc48b5cbc43b' 
+        // Credential ID for your Google Service Account Key (Type: Google Service Account from private key)
+        GCP_SERVICE_ACCOUNT_CREDENTIALS_ID = 'my-jenkins-sa' 
     }
 
     stages {
         stage('Checkout Code') {
             steps {
-                // Ensure this credential ID is correctly configured in Jenkins with access to your GitHub repo
-                git branch: 'main', credentialsId: '0442d698-3345-48d7-89ad-fc48b5cbc43b', url: 'https://github.com/AvadhootB99/test2-app.git'
+                // Ensure the credential ID is correctly configured in Jenkins with access to your GitHub repo
+                // Always use the defined variable for URL and credentials for clarity and easier updates.
+                git branch: 'main', credentialsId: "${GITHUB_CREDENTIALS_ID}", url: 'https://github.com/AvadhootB99/test2-app.git'
             }
         }
 
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Authenticate Docker to GCR/Artifact Registry using the service account
-                    // 'gke-serviceaccount-jenkins' should be the ID of your Google Service Account Key credential in Jenkins.
-                    withCredentials([googleServiceAccountKey('my-jenkins-sa')]) {
-                        // The GOOGLE_APPLICATION_CREDENTIALS environment variable is automatically set by withCredentials
-                        // gcloud auth activate-service-account is not typically needed here as `gcloud auth configure-docker`
-                        // will use the application default credentials established by the Google Cloud Oauth plugin via withCredentials.
-                        // However, if you explicitly need it for other gcloud commands, it can be useful.
-                        // sh "gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}"
-
-                        // Authenticate Docker for Artifact Registry.
-                        // For Artifact Registry, the hostname needs to be extracted correctly.
-                        // Example: us-central1-docker.pkg.dev
-                        def registryHostname = GCR_IMAGE_REPO.split('/')[0] // Extracts "us-central1-docker.pkg.dev" or "gcr.io"
+                    // Authenticate Docker to Artifact Registry using the Google Service Account
+                    // The 'googleServiceAccountKey' binding automatically sets GOOGLE_APPLICATION_CREDENTIALS
+                    withCredentials([googleServiceAccountKey("${GCP_SERVICE_ACCOUNT_CREDENTIALS_ID}")]) {
+                        // Extract just the hostname for `gcloud auth configure-docker`
+                        def registryHostname = ARTIFACT_REGISTRY_REPO_URL.split('/')[0]
                         sh "gcloud auth configure-docker ${registryHostname}"
+                        
+                        // Build the Docker image. Ensure your Dockerfile is in the current context ('.')
+                        sh "docker build -t ${FULL_IMAGE_NAME} ."
                     }
-                    // Ensure the Docker daemon is running and the Jenkins user has permissions to run docker commands.
-                    // This often means the Jenkins user needs to be part of the 'docker' group.
-                    sh "docker build -t ${FULL_IMAGE_NAME} ."
                 }
             }
         }
@@ -56,7 +62,7 @@ pipeline {
         stage('Push Docker Image') {
             steps {
                 script {
-                    // Docker push also requires authentication, which was done in the previous stage.
+                    // Docker push will use the authentication established in the previous stage.
                     sh "docker push ${FULL_IMAGE_NAME}"
                 }
             }
@@ -66,36 +72,39 @@ pipeline {
             steps {
                 script {
                     // Authenticate kubectl to the GKE cluster using the service account
-                    withCredentials([googleServiceAccountKey('my-jenkins-sa')]) {
-                        // gcloud auth activate-service-account is not typically needed here.
-                        // The get-credentials command handles authentication using the established credentials.
-                        // sh "gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}"
-
+                    withCredentials([googleServiceAccountKey("${GCP_SERVICE_ACCOUNT_CREDENTIALS_ID}")]) {
                         sh "gcloud config set project ${GCP_PROJECT_ID}"
-                        // Using --zone for zonal clusters, or --region for regional clusters
+                        
+                        // Get Kubeconfig credentials for the cluster.
+                        // Use --zone for zonal clusters, or --region for regional clusters.
+                        // Based on your GKE_CLUSTER_ZONE, it's a zonal cluster, so --zone is correct.
                         sh "gcloud container clusters get-credentials ${GKE_CLUSTER_NAME} --zone ${GKE_CLUSTER_ZONE} --project ${GCP_PROJECT_ID}"
                     }
 
-                    // IMPORTANT: The sed command for replacing the image tag
-                    // Make sure the original image path in your deployment.yaml exactly matches what you are searching for.
-                    // If your deployment.yaml has `simple-login-app:latest` initially, the sed command needs to reflect that.
-                    // It's safer to use a placeholder in your YAML and replace it dynamically.
-                    // For example, in your deployment.yaml, use: image: us-central1-docker.pkg.dev/YOUR_PROJECT_ID/my-flask-images/simple-login-app:BUILD_IMAGE_TAG
-                    // Then you would replace BUILD_IMAGE_TAG.
-                    // For now, assuming your current deployment.yaml has a fixed latest tag you want to replace:
-                    sh "sed -i 's|us-central1-docker.pkg.dev/${GCP_PROJECT_ID}/my-flask-images/simple-login-app:latest|${FULL_IMAGE_NAME}|g' ${KUBE_DEPLOYMENT_FILE}"
-
-                    // Apply Kubernetes manifests
+                    // --- Dynamic Image Tag Replacement ---
+                    // IMPORTANT: Create a placeholder in your deployment.yaml for the image tag.
+                    // Example in kubernetes/deployment.yaml:
+                    // image: us-central1-docker.pkg.dev/project_id/my-flask-images/simple-login-app:BUILD_TAG_PLACEHOLDER
+                    // Then the sed command will replace this placeholder.
+                    // This is more robust than replacing a fixed 'latest' tag.
+                    // Ensure your deployment.yaml is committed with this placeholder.
+                    
+                    // sed -i requires a backup suffix on some systems (like macOS). For Linux, '' is fine.
+                    // Using `.` after -i is a common trick to make it work on both.
+                    sh "sed -i.bak 's|BUILD_TAG_PLACEHOLDER|${IMAGE_TAG}|g' ${KUBE_DEPLOYMENT_FILE}"
+                    
+                    // Apply Kubernetes manifests.
+                    // Ensure the 'kubectl' command is available on your Jenkins agent.
                     sh "kubectl apply -f ${KUBE_DEPLOYMENT_FILE}"
                     sh "kubectl apply -f ${KUBE_SERVICE_FILE}"
                 }
             }
         }
 
-        stage('Clean Up') {
+        stage('Clean Up Local Docker Image') {
             steps {
                 script {
-                    // Optional: Clean up local Docker images if needed
+                    // Clean up the local Docker image to free up space on the Jenkins agent.
                     sh "docker rmi ${FULL_IMAGE_NAME}"
                 }
             }
@@ -104,7 +113,8 @@ pipeline {
 
     post {
         always {
-            // Optional: Send notifications (e.g., Slack, email)
+            // Clean up the workspace to ensure a fresh start for the next build.
+            cleanWs()
             echo "Pipeline finished for build ${env.BUILD_NUMBER}"
         }
         success {
@@ -112,6 +122,12 @@ pipeline {
         }
         failure {
             echo "Deployment failed! Check logs."
+        }
+        unstable {
+            echo "Pipeline was unstable, check test results."
+        }
+        aborted {
+            echo "Pipeline was aborted."
         }
     }
 }
