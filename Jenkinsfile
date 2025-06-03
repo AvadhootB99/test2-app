@@ -1,4 +1,4 @@
-// Jenkinsfile (modified to use Secret File credential for GCP)
+// Jenkinsfile (modified to use Secret File credential for GCP and address security warning)
 pipeline {
     agent any
 
@@ -25,7 +25,7 @@ pipeline {
         
         // --- Jenkins Credential IDs ---
         GITHUB_CREDENTIALS_ID = '0442d698-3345-48d7-89ad-fc48b5cbc43b' 
-        // NEW: Credential ID for your Google Service Account JSON Key (Type: Secret File)
+        // Credential ID for your Google Service Account JSON Key (Type: Secret File)
         GCP_SERVICE_ACCOUNT_JSON_KEY_ID = 'gcp-service-account-json-key' 
     }
 
@@ -40,9 +40,11 @@ pipeline {
             steps {
                 script {
                     // Use 'file()' binding for the Secret File credential
-                    withCredentials([file(credentialsId: "${GCP_SERVICE_ACCOUNT_JSON_KEY_ID}", variable: 'GCP_SA_KEY_FILE_PATH')]) {
+                    // Use a new, secure variable name for clarity and security.
+                    withCredentials([file(credentialsId: "${GCP_SERVICE_ACCOUNT_JSON_KEY_ID}", variable: 'GCP_SA_KEY_FILE_PATH_SECURE')]) {
                         // Activate the service account using the path to the temporary file
-                        sh "gcloud auth activate-service-account --key-file=${GCP_SA_KEY_FILE_PATH}"
+                        // The variable is now securely passed and properly referenced.
+                        sh "gcloud auth activate-service-account --key-file=\"${GCP_SA_KEY_FILE_PATH_SECURE}\""
                         
                         // Configure Docker to use gcloud credentials for Artifact Registry
                         def registryHostname = ARTIFACT_REGISTRY_REPO_URL.split('/')[0]
@@ -68,10 +70,13 @@ pipeline {
             steps {
                 script {
                     // Authenticate kubectl to the GKE cluster using the service account key file
-                    withCredentials([file(credentialsId: "${GCP_SERVICE_ACCOUNT_JSON_KEY_ID}", variable: 'GCP_SA_KEY_FILE_PATH')]) {
+                    withCredentials([file(credentialsId: "${GCP_SERVICE_ACCOUNT_JSON_KEY_ID}", variable: 'GCP_SA_KEY_FILE_PATH_SECURE_GKE')]) {
+                        // Use a different variable name here if preferred, or reuse if scope allows.
+                        // For clarity, I've used a slightly different one, but it's optional.
                         sh "gcloud config set project ${GCP_PROJECT_ID}"
+                        
                         // Ensure gcloud uses the activated service account for cluster auth
-                        sh "gcloud auth activate-service-account --key-file=${GCP_SA_KEY_FILE_PATH}"
+                        sh "gcloud auth activate-service-account --key-file=\"${GCP_SA_KEY_FILE_PATH_SECURE_GKE}\""
                         sh "gcloud container clusters get-credentials ${GKE_CLUSTER_NAME} --zone ${GKE_CLUSTER_ZONE} --project ${GCP_PROJECT_ID}"
                     }
 
