@@ -33,7 +33,7 @@ pipeline {
                 script {
                     // Authenticate Docker to GCR/Artifact Registry using the service account
                     // 'gke-serviceaccount-jenkins' should be the ID of your Google Service Account Key credential in Jenkins.
-                    withCredentials([googleServiceAccountKey('gke-serviceaccount-jenkins')]) {
+                    withCredentials([googleServiceAccountKey('my-jenkins-sa')]) {
                         // The GOOGLE_APPLICATION_CREDENTIALS environment variable is automatically set by withCredentials
                         // gcloud auth activate-service-account is not typically needed here as `gcloud auth configure-docker`
                         // will use the application default credentials established by the Google Cloud Oauth plugin via withCredentials.
@@ -66,7 +66,7 @@ pipeline {
             steps {
                 script {
                     // Authenticate kubectl to the GKE cluster using the service account
-                    withCredentials([googleServiceAccountKey('gke-serviceaccount-jenkins')]) {
+                    withCredentials([googleServiceAccountKey('my-jenkins-sa')]) {
                         // gcloud auth activate-service-account is not typically needed here.
                         // The get-credentials command handles authentication using the established credentials.
                         // sh "gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}"
