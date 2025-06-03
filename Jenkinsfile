@@ -5,7 +5,7 @@ pipeline {
     environment {
         // --- GCP Configuration ---
         // Replace with your actual GCP Project ID
-        GCP_PROJECT_ID = 'project_id' // <--- **IMPORTANT: REPLACE WITH YOUR ACTUAL PROJECT ID**
+        GCP_PROJECT_ID = 'cts08-avadhootb-projs' // <--- **IMPORTANT: REPLACE WITH YOUR ACTUAL PROJECT ID**
         
         // Artifact Registry Repository URL. This should point to your Docker repository.
         // Format: <LOCATION>-docker.pkg.dev/<PROJECT_ID>/<REPOSITORY_NAME>
