@@ -5,7 +5,7 @@ metadata:
   name: flask-login-service
 spec:
   selector:
-    app: flask-login
+    app: flask
   ports:
     - protocol: TCP
       port: 80 # External port

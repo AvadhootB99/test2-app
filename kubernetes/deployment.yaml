@@ -4,16 +4,16 @@ kind: Deployment
 metadata:
   name: flask-login-app
   labels:
-    app: flask-login
+    app: flask
 spec:
   replicas: 2 # You can adjust the number of replicas
   selector:
     matchLabels:
-      app: flask-login
+      app: flask
   template:
     metadata:
       labels:
-        app: flask-login
+        app: flask
     spec:
       containers:
       - name: flask-login-container
